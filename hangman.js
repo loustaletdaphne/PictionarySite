@@ -9,7 +9,7 @@ async function fetchAndShowRandomWord() {
         activateGamePlay(word);
       } catch (err) {
         console.error('Error fetching word:', err);
-        document.getElementById('random word').textContent = 'Error loading word';
+        alert('Error loading word. Please try again.');
       }
     }
 
@@ -31,12 +31,14 @@ function activateGamePlay(word) {
 function createKeydownHandler(word, unguessed_letters) {
   return function(event) {
     if (/^[a-zA-Z]$/.test(event.key)) {
-      if (word.includes(event.key)) {
-        showUserCorrectLetters(event.key, word, unguessed_letters);
+      const key = event.key.toLowerCase();
+      if (!unguessed_letters.includes(key)) return; // already guessed
+      if (word.includes(key)) {
+        showUserCorrectLetters(key, word, unguessed_letters);
       } else {
-        logIncorrectLetter(event.key, unguessed_letters);
+        logIncorrectLetter(key, unguessed_letters);
         hangmanPoints++;
-        hangMan(hangmanPoints);
+        hangMan(hangmanPoints, word);
       }
     }
   };
@@ -44,7 +46,7 @@ function createKeydownHandler(word, unguessed_letters) {
 
 
 
-function hangMan(hangmanPoints) {
+function hangMan(hangmanPoints, word) {
   console.log(hangmanPoints);
   if (hangmanPoints == 1) {
     show('.head');
@@ -58,7 +60,19 @@ function hangMan(hangmanPoints) {
     show('.leg.left');
   } else {
     show('.leg.right');
+    revealWord(word);
     endGame('#lose');
+  }
+}
+
+// On a loss, fill in the missing letters in red (correct guesses stay green)
+function revealWord(word) {
+  const spans = document.querySelectorAll('#underscore-container span');
+  for (let i = 0; i < word.length; i++) {
+    if (spans[i].textContent === '_') {
+      spans[i].textContent = word[i];
+      spans[i].style.color = 'red';
+    }
   }
 }
 
@@ -72,6 +86,7 @@ function endGame(classname) {
   document.removeEventListener("keydown", keydownHandler);
   keydownHandler = null;
   show(classname);
+  document.getElementById('replay-container').style.display = 'block';
 }
 
 function logIncorrectLetter(guess, remaining_guesses) {
@@ -109,19 +124,28 @@ function removeGuess(remaining_guesses, guess) {
 }
 
 function cleanBoard() {
-  const button = document.querySelector('.activation.button');
-  button.remove(); 
-  const container = document.getElementById('underscore-container');
+  // Stop listening for keys from any previous game
+  if (keydownHandler) {
+    document.removeEventListener("keydown", keydownHandler);
+    keydownHandler = null;
+  }
 
-  // Get all span elements inside the container
-  const spans = container.querySelectorAll('span');
+  // Hide start and replay buttons while a game is in progress
+  document.querySelector('.activation.button').style.display = 'none';
+  document.getElementById('replay-container').style.display = 'none';
 
-  // Loop through and remove spans that contain only "_"
-  spans.forEach(span => {
-    if (span.textContent.trim() === '_') {
-      span.remove();
-    }
+  // Hide the win/lose messages
+  document.getElementById('win').style.display = 'none';
+  document.getElementById('lose').style.display = 'none';
+
+  // Hide all hangman body parts
+  document.querySelectorAll('.head, .body, .arm, .leg').forEach(part => {
+    part.style.display = 'none';
   });
+
+  // Clear missed letters and the old word's blanks
+  document.querySelector('.missed-letters').textContent = '';
+  document.getElementById('underscore-container').innerHTML = '';
 }
 
 function generateSpaces(word) {

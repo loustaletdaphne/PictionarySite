@@ -179,3 +179,9 @@ body {
       background-color: red;       /* Slight hover effect */
     }
 
+
+    #replay-container {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+    }
